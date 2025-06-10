@@ -4,15 +4,27 @@ import (
 	"fmt"
 	"net/http"
 
+	"llm-mock-server/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"llm-mock-server/pkg/utils"
 )
 
 const (
-	qwenDomain              = "dashscope.aliyuncs.com"
-	qwenChatCompletionPath  = "/api/v1/services/aigc/text-generation/generation"
-	qwenResultFormatMessage = "message"
+	qwenDomain                            = "dashscope.aliyuncs.com"
+	qwenChatCompletionPath                = "/api/v1/services/aigc/text-generation/generation"
+	qwenTextEmbeddingPath                 = "/api/v1/services/embeddings/text-embedding/text-embedding"
+	qwenCompatibleChatCompletionPath      = "/compatible-mode/v1/chat/completions"
+	qwenCompatibleCompletionsPath         = "/compatible-mode/v1/completions"
+	qwenCompatibleTextEmbeddingPath       = "/compatible-mode/v1/embeddings"
+	qwenCompatibleFilesPath               = "/compatible-mode/v1/files"
+	qwenCompatibleRetrieveFilePath        = "/compatible-mode/v1/files/{file_id}"
+	qwenCompatibleRetrieveFileContentPath = "/compatible-mode/v1/files/{file_id}/content"
+	qwenCompatibleBatchesPath             = "/compatible-mode/v1/batches"
+	qwenCompatibleRetrieveBatchPath       = "/compatible-mode/v1/batches/{batch_id}"
+	qwenBailianPath                       = "/api/v1/apps"
+	qwenMultimodalGenerationPath          = "/api/v1/services/aigc/multimodal-generation/generation"
+	qwenResultFormatMessage               = "message"
 )
 
 type qwenProvider struct {
