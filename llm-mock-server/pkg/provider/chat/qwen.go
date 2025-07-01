@@ -1,8 +1,12 @@
 package chat
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"slices"
+	"time"
 
 	"llm-mock-server/pkg/utils"
 
@@ -31,8 +35,13 @@ type qwenProvider struct {
 }
 
 func (p *qwenProvider) ShouldHandleRequest(ctx *gin.Context) bool {
+	paths := []string{
+		qwenChatCompletionPath,
+		qwenCompatibleChatCompletionPath,
+	}
+
 	context, _ := getRequestContext(ctx)
-	if context.Host == qwenDomain && context.Path == qwenChatCompletionPath {
+	if context.Host == qwenDomain && slices.Contains(paths, context.Path) {
 		return true
 	}
 	return false
@@ -47,39 +56,121 @@ func (p *qwenProvider) HandleChatCompletions(ctx *gin.Context) {
 		return
 	}
 
-	// Bind request body
-	var chatRequest qwenTextGenRequest
-	if err := ctx.ShouldBindJSON(&chatRequest); err != nil {
-		p.sendErrorResponse(ctx, http.StatusBadRequest,
-			"InvalidParameter", fmt.Sprintf("invalid params: %v", err.Error()))
-		return
-	}
-
-	// Validate request body
-	if err := utils.Validate.Struct(chatRequest); err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		for _, fieldError := range validationErrors {
-			p.sendErrorResponse(ctx, http.StatusBadRequest,
-				"InvalidParameter", fmt.Sprintf("invalid params: %v", fieldError.Error()))
-			return
-		}
-	}
-
-	prompt := ""
-	messages := chatRequest.Input.Messages
-	if messages[len(messages)-1].IsStringContent() {
-		prompt = messages[len(messages)-1].StringContent()
-	}
-	response := prompt2Response(prompt)
-
 	// Determine if the request is a stream request
 	isStream := p.isStreamRequest(ctx)
 
-	if isStream {
-		// todo stream response
-	} else {
-		p.handleNonStreamResponse(ctx, chatRequest, response)
+	// 根据不同路径处理不同类型的请求
+	switch ctx.Request.URL.Path {
+	case qwenChatCompletionPath:
+		// 处理原生 Qwen 请求
+		var qwenRequest qwenTextGenRequest
+		if err := ctx.ShouldBindJSON(&qwenRequest); err != nil {
+			p.sendErrorResponse(ctx, http.StatusBadRequest,
+				"InvalidParameter", fmt.Sprintf("invalid params: %v", err.Error()))
+			return
+		}
+
+		// Validate request body
+		if err := utils.Validate.Struct(qwenRequest); err != nil {
+			validationErrors := err.(validator.ValidationErrors)
+			for _, fieldError := range validationErrors {
+				p.sendErrorResponse(ctx, http.StatusBadRequest,
+					"InvalidParameter", fmt.Sprintf("invalid params: %v", fieldError.Error()))
+				return
+			}
+		}
+
+		prompt := ""
+		messages := qwenRequest.Input.Messages
+		if len(messages) > 0 && messages[len(messages)-1].IsStringContent() {
+			prompt = messages[len(messages)-1].StringContent()
+		}
+		response := prompt2Response(prompt)
+
+		if isStream {
+			// TODO: 实现流式响应
+		} else {
+			p.handleNonStreamResponse(ctx, qwenRequest, response)
+		}
+	case qwenCompatibleChatCompletionPath:
+		// 处理兼容模式请求
+		var compatRequest chatCompletionRequest
+		if err := ctx.ShouldBindJSON(&compatRequest); err != nil {
+			p.sendErrorResponse(ctx, http.StatusBadRequest,
+				"InvalidParameter", fmt.Sprintf("invalid params: %v", err.Error()))
+			return
+		}
+
+		// Validate request body
+		if err := utils.Validate.Struct(compatRequest); err != nil {
+			validationErrors := err.(validator.ValidationErrors)
+			for _, fieldError := range validationErrors {
+				p.sendErrorResponse(ctx, http.StatusBadRequest,
+					"InvalidParameter", fmt.Sprintf("invalid params: %v", fieldError.Error()))
+				return
+			}
+		}
+
+		prompt := ""
+		if len(compatRequest.Messages) > 0 {
+			prompt = extractPromptFromMessages(compatRequest.Messages)
+		}
+		response := prompt2Response(prompt)
+
+		if isStream {
+			// 实现流式响应，参考 openAiProvider 的实现
+			utils.SetEventStreamHeaders(ctx)
+			dataChan := make(chan string)
+			stopChan := make(chan bool, 1)
+			streamResponse := chatCompletionResponse{
+				Id:      completionMockId,
+				Object:  objectChatCompletionChunk,
+				Created: completionMockCreated,
+				Model:   compatRequest.Model,
+			}
+			streamResponseChoice := chatCompletionChoice{Delta: &chatMessage{}}
+
+			go func() {
+				for i, s := range response {
+					streamResponseChoice.Delta.Content = string(s)
+					if i == len(response)-1 {
+						streamResponseChoice.FinishReason = ptr(stopReason)
+					}
+					streamResponse.Choices = []chatCompletionChoice{streamResponseChoice}
+					jsonStr, _ := json.Marshal(streamResponse)
+					dataChan <- string(jsonStr)
+
+					// 模拟响应延迟
+					time.Sleep(200 * time.Millisecond)
+				}
+				stopChan <- true
+			}()
+
+			ctx.Stream(func(w io.Writer) bool {
+				select {
+				case data := <-dataChan:
+					ctx.Render(-1, streamEvent{Data: "data: " + data})
+					return true
+				case <-stopChan:
+					ctx.Render(-1, streamEvent{Data: "data: [DONE]"})
+					return false
+				}
+			})
+		} else {
+			// 使用与 OpenAI 相同的响应格式
+			completion := createChatCompletionResponse(compatRequest.Model, response)
+			ctx.JSON(http.StatusOK, completion)
+		}
 	}
+}
+
+// 从兼容模式消息中提取提示文本
+func extractPromptFromMessages(messages []chatMessage) string {
+	if len(messages) == 0 {
+		return ""
+	}
+	lastMessage := messages[len(messages)-1]
+	return lastMessage.StringContent()
 }
 
 func (p *qwenProvider) sendErrorResponse(ctx *gin.Context, statusCode int, errorCode, errorMsg string) {
