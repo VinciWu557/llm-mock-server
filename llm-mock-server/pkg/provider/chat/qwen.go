@@ -88,7 +88,7 @@ func (p *qwenProvider) HandleChatCompletions(ctx *gin.Context) {
 		response := prompt2Response(prompt)
 
 		if isStream {
-			// TODO: 实现流式响应
+			p.handleStreamResponse(ctx, qwenRequest, response)
 		} else {
 			p.handleNonStreamResponse(ctx, qwenRequest, response)
 		}
@@ -199,6 +199,21 @@ func (p *qwenProvider) handleNonStreamResponse(ctx *gin.Context, chatRequest qwe
 	ctx.JSON(http.StatusOK, completion)
 }
 
+func (p *qwenProvider) handleStreamResponse(ctx *gin.Context, chatRequest qwenTextGenRequest, response string) {
+	utils.SetEventStreamHeaders(ctx)
+	dataChan, stopChan := createQwenStreamResponse(chatRequest, response)
+	ctx.Stream(func(w io.Writer) bool {
+		select {
+		case data := <-dataChan:
+			ctx.Render(-1, streamEvent{Data: "data: " + data})
+			return true
+		case <-stopChan:
+			ctx.Render(-1, streamEvent{Data: "data: [DONE]"})
+			return false
+		}
+	})
+}
+
 type qwenErrorResp struct {
 	Code      string `json:"code"`
 	Message   string `json:"message"`
@@ -263,6 +278,36 @@ func createQwenTextGenResponse(chatRequest qwenTextGenRequest, response string) 
 		},
 		RequestId: completionMockId,
 	}
+}
+
+func createQwenStreamResponse(chatRequest qwenTextGenRequest, response string) (chan string, chan bool) {
+	dataChan := make(chan string)
+	stopChan := make(chan bool, 1)
+	streamResponse := chatCompletionResponse{
+		Id:      completionMockId,
+		Object:  objectChatCompletionChunk,
+		Created: completionMockCreated,
+		Model:   chatRequest.Model,
+	}
+	streamResponseChoice := chatCompletionChoice{Delta: &chatMessage{}}
+
+	go func() {
+		for i, s := range response {
+			streamResponseChoice.Delta.Content = string(s)
+			if i == len(response)-1 {
+				streamResponseChoice.FinishReason = ptr(stopReason)
+			}
+			streamResponse.Choices = []chatCompletionChoice{streamResponseChoice}
+			jsonStr, _ := json.Marshal(streamResponse)
+			dataChan <- string(jsonStr)
+
+			// 模拟响应延迟
+			time.Sleep(200 * time.Millisecond)
+		}
+		stopChan <- true
+	}()
+
+	return dataChan, stopChan
 }
 
 type qwenTextGenOutput struct {
