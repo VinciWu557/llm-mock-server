@@ -3,8 +3,9 @@ package embeddings
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"llm-mock-server/pkg/provider"
+
+	"github.com/gin-gonic/gin"
 )
 
 type requestHandler interface {
@@ -13,10 +14,14 @@ type requestHandler interface {
 	HandleEmbeddings(context *gin.Context)
 }
 
-var chatCompletionsHandlers []requestHandler
+var (
+	embeddingsHandlers = []requestHandler{
+		&qwenEmbeddings{},
+	}
+)
 
 func HandleEmbeddings(context *gin.Context) {
-	for _, handler := range chatCompletionsHandlers {
+	for _, handler := range embeddingsHandlers {
 		if handler.ShouldHandleRequest(context) {
 			handler.HandleEmbeddings(context)
 			return

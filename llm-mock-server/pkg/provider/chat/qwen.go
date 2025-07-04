@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	qwenDomain                            = "dashscope.aliyuncs.com"
-	qwenChatCompletionPath                = "/api/v1/services/aigc/text-generation/generation"
-	qwenTextEmbeddingPath                 = "/api/v1/services/embeddings/text-embedding/text-embedding"
-	qwenCompatibleChatCompletionPath      = "/compatible-mode/v1/chat/completions"
-	qwenCompatibleCompletionsPath         = "/compatible-mode/v1/completions"
-	qwenCompatibleTextEmbeddingPath       = "/compatible-mode/v1/embeddings"
+	qwenDomain                      = "dashscope.aliyuncs.com"
+	qwenChatCompletionPath          = "/api/v1/services/aigc/text-generation/generation"
+	
+
+	qwenCompatibleChatCompletionPath = "/compatible-mode/v1/chat/completions"
+	qwenCompatibleCompletionsPath    = "/compatible-mode/v1/completions"
+
 	qwenCompatibleFilesPath               = "/compatible-mode/v1/files"
 	qwenCompatibleRetrieveFilePath        = "/compatible-mode/v1/files/{file_id}"
 	qwenCompatibleRetrieveFileContentPath = "/compatible-mode/v1/files/{file_id}/content"
@@ -40,7 +41,7 @@ func (p *qwenProvider) ShouldHandleRequest(ctx *gin.Context) bool {
 		qwenCompatibleChatCompletionPath,
 	}
 
-	context, _ := getRequestContext(ctx)
+	context, _ := utils.GetRequestContext(ctx)
 	if context.Host == qwenDomain && slices.Contains(paths, context.Path) {
 		return true
 	}

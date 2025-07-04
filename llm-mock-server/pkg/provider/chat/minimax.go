@@ -22,7 +22,7 @@ const (
 type minimaxProvider struct{}
 
 func (p *minimaxProvider) ShouldHandleRequest(ctx *gin.Context) bool {
-	context, _ := getRequestContext(ctx)
+	context, _ := utils.GetRequestContext(ctx)
 	if context.Host == minimaxDomain && context.Path == minimaxChatCompletionProPath {
 		return true
 	}

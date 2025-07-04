@@ -2,13 +2,13 @@ package chat
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"llm-mock-server/pkg/log"
 	"llm-mock-server/pkg/provider"
+	"llm-mock-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -71,12 +71,6 @@ func handleChatCompletions(context *gin.Context) {
 	context.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 }
 
-type requestContext struct {
-	Host  string
-	Path  string
-	Model string
-}
-
 func buildRequestContext(context *gin.Context) error {
 	body, err := io.ReadAll(context.Request.Body)
 	if err != nil {
@@ -96,24 +90,10 @@ func buildRequestContext(context *gin.Context) error {
 	}
 	model, _ := data["model"].(string)
 
-	context.Set("requestContext", requestContext{
+	context.Set("requestContext", utils.RequestContext{
 		Host:  context.Request.Host,
 		Path:  context.Request.URL.Path,
 		Model: model})
 
 	return nil
-}
-
-func getRequestContext(context *gin.Context) (requestContext, error) {
-	requestCtx, exists := context.Get("requestContext")
-	if !exists {
-		return requestContext{}, fmt.Errorf("request context not found")
-	}
-
-	ctx, ok := requestCtx.(requestContext)
-	if !ok {
-		return requestContext{}, fmt.Errorf("invalid request context type")
-	}
-
-	return ctx, nil
 }
