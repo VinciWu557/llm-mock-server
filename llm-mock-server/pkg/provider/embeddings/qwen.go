@@ -1,7 +1,6 @@
 package embeddings
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -19,6 +18,17 @@ const (
 
 	// Mock constants
 	embeddingMockId = "embedding-mock"
+)
+
+var (
+	// 固定的 mock embedding 向量，用于测试
+	qwenMockEmbeddingVector = []float64{0.001, 0.002, 0.003}
+
+	// 固定的 usage 数据
+	qwenMockUsage = usage{
+		PromptTokens: 5,
+		TotalTokens:  5,
+	}
 )
 
 // qwen 错误响应结构
@@ -83,7 +93,7 @@ func (h *qwenEmbeddings) HandleEmbeddings(c *gin.Context) {
 		c.JSON(http.StatusOK, response)
 
 	case qwenCompatibleTextEmbeddingPath:
-		// 处理兼容模式请求
+		// 处理兼容模式请求 - 直接处理，不经过 qwen 格式转换
 		var compatRequest embeddingsRequest
 		if err := c.ShouldBindJSON(&compatRequest); err != nil {
 			h.sendErrorResponse(c, http.StatusBadRequest,
@@ -101,17 +111,16 @@ func (h *qwenEmbeddings) HandleEmbeddings(c *gin.Context) {
 			}
 		}
 
-		// 构建 qwen 请求格式
-		qwenRequest, err := h.buildQwenTextEmbeddingRequest(&compatRequest)
+		// 直接处理输入文本
+		texts, err := h.extractTextsFromInput(compatRequest.Input)
 		if err != nil {
 			h.sendErrorResponse(c, http.StatusBadRequest,
 				"InvalidParameter", fmt.Sprintf("invalid input: %v", err.Error()))
 			return
 		}
 
-		// 生成 qwen 响应并转换为兼容格式
-		qwenResponse := h.createQwenTextEmbeddingResponse(*qwenRequest)
-		response := h.buildEmbeddingsResponse(&compatRequest, &qwenResponse)
+		// 直接生成兼容格式的响应
+		response := h.createCompatibleEmbeddingsResponse(compatRequest, texts)
 		c.JSON(http.StatusOK, response)
 	}
 }
@@ -126,29 +135,47 @@ func (h *qwenEmbeddings) sendErrorResponse(ctx *gin.Context, statusCode int, err
 	ctx.JSON(statusCode, errorResp)
 }
 
-// 构建 qwen 文本嵌入请求
-func (h *qwenEmbeddings) buildQwenTextEmbeddingRequest(request *embeddingsRequest) (*qwenTextEmbeddingRequest, error) {
-	var texts []string
-	if str, isString := request.Input.(string); isString {
-		texts = []string{str}
-	} else if strs, isArray := request.Input.([]interface{}); isArray {
-		texts = make([]string, 0, len(strs))
-		for _, item := range strs {
-			if str, isString := item.(string); isString {
+// 从输入中提取文本数组（类似 openai.go 的逻辑）
+func (h *qwenEmbeddings) extractTextsFromInput(input interface{}) ([]string, error) {
+	switch v := input.(type) {
+	case string:
+		return []string{v}, nil
+	case []interface{}:
+		texts := make([]string, 0, len(v))
+		for i, item := range v {
+			if str, ok := item.(string); ok {
 				texts = append(texts, str)
 			} else {
-				return nil, errors.New("unsupported input type in array: " + reflect.TypeOf(item).String())
+				return nil, fmt.Errorf("invalid input type at index %d: expected string, got %s",
+					i, reflect.TypeOf(item).String())
 			}
 		}
-	} else {
-		return nil, errors.New("unsupported input type: " + reflect.TypeOf(request.Input).String())
+		return texts, nil
+	default:
+		return nil, fmt.Errorf("invalid input type: expected string or array of strings, got %s",
+			reflect.TypeOf(input).String())
 	}
-	return &qwenTextEmbeddingRequest{
-		Model: request.Model,
-		Input: qwenTextEmbeddingInput{
-			Texts: texts,
-		},
-	}, nil
+}
+
+// 创建兼容格式的 embeddings 响应（类似 openai.go 的逻辑）
+func (h *qwenEmbeddings) createCompatibleEmbeddingsResponse(request embeddingsRequest, texts []string) embeddingsResponse {
+	data := make([]embedding, len(texts))
+
+	// 对每个文本都使用相同的固定 mock 向量
+	for i := range texts {
+		data[i] = embedding{
+			Object:    "embedding",
+			Index:     i,
+			Embedding: qwenMockEmbeddingVector,
+		}
+	}
+
+	return embeddingsResponse{
+		Object: "list",
+		Data:   data,
+		Model:  request.Model,
+		Usage:  qwenMockUsage,
+	}
 }
 
 // 构建通用 embeddings 响应
@@ -172,19 +199,15 @@ func (h *qwenEmbeddings) buildEmbeddingsResponse(request *embeddingsRequest, qwe
 	}
 }
 
-// 创建 qwen 文本嵌入响应
+// 创建 qwen 文本嵌入响应 - 使用固定值简化逻辑
 func (h *qwenEmbeddings) createQwenTextEmbeddingResponse(request qwenTextEmbeddingRequest) qwenTextEmbeddingResponse {
 	embeddings := make([]qwenTextEmbeddings, len(request.Input.Texts))
-	for i, _ := range request.Input.Texts {
-		// 生成 mock embedding 向量 (1536 维度，模拟真实的 embedding)
-		mockEmbedding := make([]float64, 1536)
-		for j := range mockEmbedding {
-			mockEmbedding[j] = 0.001 * float64(i+j) // 简单的 mock 数据
-		}
 
+	// 对每个文本都使用相同的固定 mock 向量
+	for i := range request.Input.Texts {
 		embeddings[i] = qwenTextEmbeddings{
 			TextIndex: i,
-			Embedding: mockEmbedding,
+			Embedding: qwenMockEmbeddingVector,
 		}
 	}
 
