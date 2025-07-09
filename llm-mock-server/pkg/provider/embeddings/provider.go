@@ -17,6 +17,7 @@ type requestHandler interface {
 var (
 	embeddingsHandlers = []requestHandler{
 		&qwenEmbeddings{},
+		&openaiEmbeddings{},
 	}
 )
 
