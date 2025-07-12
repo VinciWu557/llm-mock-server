@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"llm-mock-server/pkg/provider"
+	"llm-mock-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,9 +20,27 @@ var (
 		&qwenEmbeddings{},
 		&openaiEmbeddings{},
 	}
+
+	embeddingsRoutes = []string{
+		// qwen
+		"/compatible-mode/v1/embeddings",
+		"/api/v1/services/embeddings/text-embedding/text-embedding",
+		// openai
+		"/v1/embeddings",
+	}
 )
 
-func HandleEmbeddings(context *gin.Context) {
+func SetupRoutes(server *gin.Engine) {
+	for _, route := range embeddingsRoutes {
+		server.POST(route, handleEmbeddings)
+	}
+}
+
+func handleEmbeddings(context *gin.Context) {
+	if err := utils.BuildRequestContext(context); err != nil {
+		return
+	}
+
 	for _, handler := range embeddingsHandlers {
 		if handler.ShouldHandleRequest(context) {
 			handler.HandleEmbeddings(context)

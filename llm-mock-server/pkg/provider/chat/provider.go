@@ -1,12 +1,8 @@
 package chat
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
-	"strings"
 
-	"llm-mock-server/pkg/log"
 	"llm-mock-server/pkg/provider"
 	"llm-mock-server/pkg/utils"
 
@@ -59,9 +55,10 @@ func SetupRoutes(server *gin.Engine) {
 }
 
 func handleChatCompletions(context *gin.Context) {
-	if err := buildRequestContext(context); err != nil {
+	if err := utils.BuildRequestContext(context); err != nil {
 		return
 	}
+
 	for _, handler := range chatCompletionsHandlers {
 		if handler.ShouldHandleRequest(context) {
 			handler.HandleChatCompletions(context)
@@ -69,31 +66,4 @@ func handleChatCompletions(context *gin.Context) {
 		}
 	}
 	context.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
-}
-
-func buildRequestContext(context *gin.Context) error {
-	body, err := io.ReadAll(context.Request.Body)
-	if err != nil {
-		log.Errorf("Error reading request body:", err)
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Error reading request body"})
-		return err
-	}
-
-	// Reset the request body so it can be read again by subsequent handlers
-	context.Request.Body = io.NopCloser(strings.NewReader(string(body)))
-
-	var data map[string]interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		log.Errorf("Error unmarshalling JSON:", err)
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Error unmarshalling JSON"})
-		return err
-	}
-	model, _ := data["model"].(string)
-
-	context.Set("requestContext", utils.RequestContext{
-		Host:  context.Request.Host,
-		Path:  context.Request.URL.Path,
-		Model: model})
-
-	return nil
 }
