@@ -1,4 +1,4 @@
-package embeddings
+package embedding
 
 import (
 	"net/http"
@@ -16,12 +16,12 @@ type requestHandler interface {
 }
 
 var (
-	embeddingsHandlers = []requestHandler{
-		&qwenEmbeddings{},
-		&openaiEmbeddings{},
+	embeddingHandlers = []requestHandler{
+		&qwenEmbedding{},
+		&openaiEmbedding{},
 	}
 
-	embeddingsRoutes = []string{
+	embeddingRoutes = []string{
 		// qwen
 		"/compatible-mode/v1/embeddings",
 		"/api/v1/services/embeddings/text-embedding/text-embedding",
@@ -31,17 +31,17 @@ var (
 )
 
 func SetupRoutes(server *gin.Engine) {
-	for _, route := range embeddingsRoutes {
-		server.POST(route, handleEmbeddings)
+	for _, route := range embeddingRoutes {
+		server.POST(route, handleEmbedding)
 	}
 }
 
-func handleEmbeddings(context *gin.Context) {
+func handleEmbedding(context *gin.Context) {
 	if err := utils.BuildRequestContext(context); err != nil {
 		return
 	}
 
-	for _, handler := range embeddingsHandlers {
+	for _, handler := range embeddingHandlers {
 		if handler.ShouldHandleRequest(context) {
 			handler.HandleEmbeddings(context)
 			return

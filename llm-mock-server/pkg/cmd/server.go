@@ -9,7 +9,7 @@ import (
 	"llm-mock-server/pkg/log"
 	"llm-mock-server/pkg/middleware"
 	"llm-mock-server/pkg/provider/chat"
-	"llm-mock-server/pkg/provider/embeddings"
+	"llm-mock-server/pkg/provider/embedding"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -43,7 +43,7 @@ func Run(option *options.Option) error {
 	chat.SetupRoutes(server)
 
 	// Set up embeddings routes
-	embeddings.SetupRoutes(server)
+	embedding.SetupRoutes(server)
 
 	log.Infof("Starting server on port %d", option.ServerPort)
 	return server.Run(fmt.Sprintf(":%d", option.ServerPort))

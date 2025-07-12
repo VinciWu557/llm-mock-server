@@ -1,4 +1,4 @@
-package embeddings
+package embedding
 
 import (
 	"fmt"
@@ -21,14 +21,14 @@ var (
 	mockEmbeddingVector = []float64{0.1, 0.2, 0.3}
 )
 
-type openaiEmbeddings struct {
+type openaiEmbedding struct {
 }
 
-func (e *openaiEmbeddings) ShouldHandleRequest(ctx *gin.Context) bool {
+func (e *openaiEmbedding) ShouldHandleRequest(ctx *gin.Context) bool {
 	return ctx.Request.URL.Path == "/v1/embeddings"
 }
 
-func (e *openaiEmbeddings) HandleEmbeddings(c *gin.Context) {
+func (e *openaiEmbedding) HandleEmbeddings(c *gin.Context) {
 	// 验证 Authorization header
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -65,7 +65,7 @@ func (e *openaiEmbeddings) HandleEmbeddings(c *gin.Context) {
 }
 
 // 从输入中提取文本数组
-func (e *openaiEmbeddings) extractTextsFromInput(input interface{}) ([]string, error) {
+func (e *openaiEmbedding) extractTextsFromInput(input interface{}) ([]string, error) {
 	switch v := input.(type) {
 	case string:
 		return []string{v}, nil
@@ -87,7 +87,7 @@ func (e *openaiEmbeddings) extractTextsFromInput(input interface{}) ([]string, e
 }
 
 // 创建 embeddings 响应
-func (e *openaiEmbeddings) createEmbeddingsResponse(request embeddingsRequest, texts []string) embeddingsResponse {
+func (e *openaiEmbedding) createEmbeddingsResponse(request embeddingsRequest, texts []string) embeddingsResponse {
 	data := make([]embedding, len(texts))
 
 	// 直接使用固定的 mock 向量

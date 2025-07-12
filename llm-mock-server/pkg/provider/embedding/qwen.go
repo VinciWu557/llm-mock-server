@@ -1,4 +1,4 @@
-package embeddings
+package embedding
 
 import (
 	"fmt"
@@ -38,10 +38,10 @@ type qwenErrorResp struct {
 	RequestId string `json:"request_id"`
 }
 
-type qwenEmbeddings struct {
+type qwenEmbedding struct {
 }
 
-func (h *qwenEmbeddings) ShouldHandleRequest(ctx *gin.Context) bool {
+func (h *qwenEmbedding) ShouldHandleRequest(ctx *gin.Context) bool {
 	context, _ := utils.GetRequestContext(ctx)
 
 	if context.Host != qwenDomain {
@@ -58,7 +58,7 @@ func (h *qwenEmbeddings) ShouldHandleRequest(ctx *gin.Context) bool {
 	return false
 }
 
-func (h *qwenEmbeddings) HandleEmbeddings(c *gin.Context) {
+func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 	// 验证 Authorization header
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -126,7 +126,7 @@ func (h *qwenEmbeddings) HandleEmbeddings(c *gin.Context) {
 }
 
 // 发送错误响应
-func (h *qwenEmbeddings) sendErrorResponse(ctx *gin.Context, statusCode int, errorCode, errorMsg string) {
+func (h *qwenEmbedding) sendErrorResponse(ctx *gin.Context, statusCode int, errorCode, errorMsg string) {
 	errorResp := qwenErrorResp{
 		Code:      errorCode,
 		Message:   errorMsg,
@@ -136,7 +136,7 @@ func (h *qwenEmbeddings) sendErrorResponse(ctx *gin.Context, statusCode int, err
 }
 
 // 从输入中提取文本数组（类似 openai.go 的逻辑）
-func (h *qwenEmbeddings) extractTextsFromInput(input interface{}) ([]string, error) {
+func (h *qwenEmbedding) extractTextsFromInput(input interface{}) ([]string, error) {
 	switch v := input.(type) {
 	case string:
 		return []string{v}, nil
@@ -158,7 +158,7 @@ func (h *qwenEmbeddings) extractTextsFromInput(input interface{}) ([]string, err
 }
 
 // 创建兼容格式的 embeddings 响应（类似 openai.go 的逻辑）
-func (h *qwenEmbeddings) createCompatibleEmbeddingsResponse(request embeddingsRequest, texts []string) embeddingsResponse {
+func (h *qwenEmbedding) createCompatibleEmbeddingsResponse(request embeddingsRequest, texts []string) embeddingsResponse {
 	data := make([]embedding, len(texts))
 
 	// 对每个文本都使用相同的固定 mock 向量
@@ -179,7 +179,7 @@ func (h *qwenEmbeddings) createCompatibleEmbeddingsResponse(request embeddingsRe
 }
 
 // 构建通用 embeddings 响应
-func (h *qwenEmbeddings) buildEmbeddingsResponse(request *embeddingsRequest, qwenResponse *qwenTextEmbeddingResponse) *embeddingsResponse {
+func (h *qwenEmbedding) buildEmbeddingsResponse(request *embeddingsRequest, qwenResponse *qwenTextEmbeddingResponse) *embeddingsResponse {
 	data := make([]embedding, 0, len(qwenResponse.Output.Embeddings))
 	for _, qwenEmbedding := range qwenResponse.Output.Embeddings {
 		data = append(data, embedding{
@@ -200,7 +200,7 @@ func (h *qwenEmbeddings) buildEmbeddingsResponse(request *embeddingsRequest, qwe
 }
 
 // 创建 qwen 文本嵌入响应 - 使用固定值简化逻辑
-func (h *qwenEmbeddings) createQwenTextEmbeddingResponse(request qwenTextEmbeddingRequest) qwenTextEmbeddingResponse {
+func (h *qwenEmbedding) createQwenTextEmbeddingResponse(request qwenTextEmbeddingRequest) qwenTextEmbeddingResponse {
 	embeddings := make([]qwenTextEmbeddings, len(request.Input.Texts))
 
 	// 对每个文本都使用相同的固定 mock 向量
