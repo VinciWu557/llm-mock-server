@@ -23,10 +23,10 @@ var (
 
 	embeddingRoutes = []string{
 		// qwen
-		"/compatible-mode/v1/embeddings",
-		"/api/v1/services/embeddings/text-embedding/text-embedding",
+		qwenTextEmbeddingPath,
+		qwenCompatibleTextEmbeddingPath,
 		// openai
-		"/v1/embeddings",
+		openaiEmbeddingPath,
 	}
 )
 

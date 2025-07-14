@@ -11,6 +11,10 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+const (
+	openaiEmbeddingPath = "/v1/embeddings"
+)
+
 var (
 	embeddingMockUsage = usage{
 		PromptTokens: 8,
@@ -25,7 +29,7 @@ type openaiEmbedding struct {
 }
 
 func (e *openaiEmbedding) ShouldHandleRequest(ctx *gin.Context) bool {
-	return ctx.Request.URL.Path == "/v1/embeddings"
+	return ctx.Request.URL.Path == openaiEmbeddingPath
 }
 
 func (e *openaiEmbedding) HandleEmbeddings(c *gin.Context) {
