@@ -25,14 +25,10 @@ var (
 		qwenCompatibleFilesPath,
 		qwenCompatibleRetrieveFilePath,
 		qwenCompatibleRetrieveFileContentPath,
-		qwenCompatibleBatchesPath,
-		qwenCompatibleRetrieveBatchPath,
 		// openai
 		openaiFilesPath,
 		openaiRetrieveFilePath,
 		openaiRetrieveFileContentPath,
-		openaiBatchesPath,
-		openaiRetrieveBatchPath,
 	}
 )
 

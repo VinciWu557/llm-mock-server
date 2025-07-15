@@ -8,8 +8,10 @@ import (
 	"llm-mock-server/pkg/cmd/options"
 	"llm-mock-server/pkg/log"
 	"llm-mock-server/pkg/middleware"
+	"llm-mock-server/pkg/provider/batch"
 	"llm-mock-server/pkg/provider/chat"
 	"llm-mock-server/pkg/provider/embedding"
+	"llm-mock-server/pkg/provider/file"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -44,6 +46,12 @@ func Run(option *options.Option) error {
 
 	// Set up embeddings routes
 	embedding.SetupRoutes(server)
+
+	// Set up file routes
+	file.SetupRoutes(server)
+
+	// Set up batch routes
+	batch.SetupRoutes(server)
 
 	log.Infof("Starting server on port %d", option.ServerPort)
 	return server.Run(fmt.Sprintf(":%d", option.ServerPort))
