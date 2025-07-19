@@ -70,97 +70,9 @@ func (h *openAIBatch) handleBatches(c *gin.Context, method string) {
 			return
 		}
 
-		c.JSON(http.StatusOK, batch{
-			Id:       batchMockID,
-			Object:   "batch",
-			Endpoint: "/v1/chat/completions",
-			Errors: struct {
-				Data []struct {
-					Code    string `json:"code"`
-					Line    int    `json:"line"`
-					Message string `json:"message"`
-					Param   string `json:"param"`
-				} `json:"data"`
-				Object string `json:"object"`
-			}{},
-			InputFileId:      req.InputFileId,
-			CompletionWindow: "24h",
-			Status:           "validating",
-			OutputFileId:     "",
-			ErrorFileId:      "",
-			CreatedAt:        batchMockCreated,
-			InProgressAt:     0,
-			ExpiresAt:        0,
-			FinalizingAt:     0,
-			CompletedAt:      0,
-			FailedAt:         0,
-			ExpiredAt:        0,
-			CancellingAt:     0,
-			CancelledAt:      0,
-			RequestCounts: struct {
-				Completed int `json:"completed"`
-				Failed    int `json:"failed"`
-				Total     int `json:"total"`
-			}{
-				Completed: 0,
-				Failed:    0,
-				Total:     0,
-			},
-			Metadata: map[string]string{
-				"customer_id":       batchMockCustomerID,
-				"batch_description": batchMockDescription,
-			},
-		})
+		c.JSON(http.StatusOK, createBatchResponse(req.InputFileId))
 	case http.MethodGet:
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data": []*batch{
-				{
-					Id:       batchMockID,
-					Object:   "batch",
-					Endpoint: "/v1/chat/completions",
-					Errors: struct {
-						Data []struct {
-							Code    string `json:"code"`
-							Line    int    `json:"line"`
-							Message string `json:"message"`
-							Param   string `json:"param"`
-						} `json:"data"`
-						Object string `json:"object"`
-					}{},
-					InputFileId:      batchMockInputFileId,
-					CompletionWindow: "24h",
-					Status:           "validating",
-					OutputFileId:     "",
-					ErrorFileId:      "",
-					CreatedAt:        batchMockCreated,
-					InProgressAt:     0,
-					ExpiresAt:        0,
-					FinalizingAt:     0,
-					CompletedAt:      0,
-					FailedAt:         0,
-					ExpiredAt:        0,
-					CancellingAt:     0,
-					CancelledAt:      0,
-					RequestCounts: struct {
-						Completed int `json:"completed"`
-						Failed    int `json:"failed"`
-						Total     int `json:"total"`
-					}{
-						Completed: 0,
-						Failed:    0,
-						Total:     0,
-					},
-					Metadata: map[string]string{
-						"customer_id":       batchMockCustomerID,
-						"batch_description": batchMockDescription,
-					},
-				},
-			},
-			"first_id": batchMockID,
-			"last_id":  batchMockID,
-			"has_more": true,
-		})
+		c.JSON(http.StatusOK, createBatchListResponse())
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -169,53 +81,128 @@ func (h *openAIBatch) handleBatches(c *gin.Context, method string) {
 func (h *openAIBatch) handleSingleBatch(c *gin.Context, method string, batchID string) {
 	switch method {
 	case http.MethodGet:
-		c.JSON(http.StatusOK, batch{
-			Id:       batchID,
-			Object:   "batch",
-			Endpoint: "/v1/chat/completions",
-			Errors: struct {
-				Data []struct {
-					Code    string `json:"code"`
-					Line    int    `json:"line"`
-					Message string `json:"message"`
-					Param   string `json:"param"`
-				} `json:"data"`
-				Object string `json:"object"`
-			}{},
-			InputFileId:      batchMockInputFileId,
-			CompletionWindow: "24h",
-			Status:           "validating",
-			OutputFileId:     "",
-			ErrorFileId:      "",
-			CreatedAt:        batchMockCreated,
-			InProgressAt:     0,
-			ExpiresAt:        0,
-			FinalizingAt:     0,
-			CompletedAt:      0,
-			FailedAt:         0,
-			ExpiredAt:        0,
-			CancellingAt:     0,
-			CancelledAt:      0,
-			RequestCounts: struct {
-				Completed int `json:"completed"`
-				Failed    int `json:"failed"`
-				Total     int `json:"total"`
-			}{
-				Completed: 0,
-				Failed:    0,
-				Total:     0,
-			},
-			Metadata: map[string]string{
-				"customer_id":       batchMockCustomerID,
-				"batch_description": batchMockDescription,
-			},
-		})
+		c.JSON(http.StatusOK, createBatchResponse(batchID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
 }
 
-// batch 结构体，模拟 OpenAI 批处理对象
+// createBatchResponse 创建标准的 batch 响应结构体
+func createBatchResponse(batchID string) batch {
+	return batch{
+		Id:       batchID,
+		Object:   "batch",
+		Endpoint: "/v1/chat/completions",
+		Errors: struct {
+			Data []struct {
+				Code    string `json:"code"`
+				Line    int    `json:"line"`
+				Message string `json:"message"`
+				Param   string `json:"param"`
+			} `json:"data"`
+			Object string `json:"object"`
+		}{},
+		InputFileId:      batchMockInputFileId,
+		CompletionWindow: "24h",
+		Status:           "validating",
+		OutputFileId:     "",
+		ErrorFileId:      "",
+		CreatedAt:        batchMockCreated,
+		InProgressAt:     0,
+		ExpiresAt:        0,
+		FinalizingAt:     0,
+		CompletedAt:      0,
+		FailedAt:         0,
+		ExpiredAt:        0,
+		CancellingAt:     0,
+		CancelledAt:      0,
+		RequestCounts: struct {
+			Completed int `json:"completed"`
+			Failed    int `json:"failed"`
+			Total     int `json:"total"`
+		}{
+			Completed: 0,
+			Failed:    0,
+			Total:     0,
+		},
+		Metadata: map[string]string{
+			"customer_id":       batchMockCustomerID,
+			"batch_description": batchMockDescription,
+		},
+	}
+}
+
+// createBatchListResponse 创建标准的 batch 列表响应
+func createBatchListResponse() gin.H {
+	return gin.H{
+		"object": "list",
+		"data": []*batch{
+			{
+				Id:       batchMockID,
+				Object:   "batch",
+				Endpoint: "/v1/chat/completions",
+				Errors: struct {
+					Data []struct {
+						Code    string `json:"code"`
+						Line    int    `json:"line"`
+						Message string `json:"message"`
+						Param   string `json:"param"`
+					} `json:"data"`
+					Object string `json:"object"`
+				}{},
+				InputFileId:      batchMockInputFileId,
+				CompletionWindow: "24h",
+				Status:           "validating",
+				OutputFileId:     "",
+				ErrorFileId:      "",
+				CreatedAt:        batchMockCreated,
+				InProgressAt:     0,
+				ExpiresAt:        0,
+				FinalizingAt:     0,
+				CompletedAt:      0,
+				FailedAt:         0,
+				ExpiredAt:        0,
+				CancellingAt:     0,
+				CancelledAt:      0,
+				RequestCounts: struct {
+					Completed int `json:"completed"`
+					Failed    int `json:"failed"`
+					Total     int `json:"total"`
+				}{
+					Completed: 0,
+					Failed:    0,
+					Total:     0,
+				},
+				Metadata: map[string]string{
+					"customer_id":       batchMockCustomerID,
+					"batch_description": batchMockDescription,
+				},
+			},
+		},
+		"first_id": batchMockID,
+		"last_id":  batchMockID,
+		"has_more": true,
+	}
+}
+
+// createQwenBatchListResponse 创建 qwen 兼容的简化版 batch 列表响应
+func createQwenBatchListResponse() gin.H {
+	return gin.H{
+		"object": "list",
+		"data": []*batch{
+			{
+				Id:               batchMockID,
+				Object:           "batch",
+				Endpoint:         "https://api.qwen.com/v1/batches",
+				CompletionWindow: "1000",
+				Metadata: map[string]string{
+					"key": "value",
+				},
+			},
+		},
+	}
+}
+
 type batch struct {
 	Id       string `json:"id"`
 	Object   string `json:"object"`

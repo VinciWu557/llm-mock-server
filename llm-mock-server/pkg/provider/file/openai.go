@@ -10,12 +10,13 @@ import (
 )
 
 const (
-	fileMockCreated  int64  = 10
-	fileMockID       string = "file-abc123"
-	fileMockFilename string = "test.txt"
-	fileMockPurpose  string = "assistants"
-	fileMockStatus   string = "processed"
-	fileMockBytes    int    = 140
+	fileMockCreated       int64  = 10
+	fileMockID            string = "file-abc123"
+	fileMockFilename      string = "test.txt"
+	fileMockPurpose       string = "assistants"
+	fileMockStatus        string = "processed"
+	fileMockBytes         int    = 140
+	fileMockStatusDetails string = "test_status_details"
 
 	openaiFilesPath               = "/v1/files"
 	openaiRetrieveFilePath        = "/v1/files/{file_id}"
@@ -80,29 +81,9 @@ func (h *openaiFile) handleFiles(c *gin.Context, method string) {
 			return
 		}
 
-		c.JSON(http.StatusOK, uploadFileResponse{
-			Id:        fileMockID,
-			Object:    "file",
-			Bytes:     fileMockBytes,
-			CreatedAt: fileMockCreated,
-			Filename:  fileMockFilename,
-			Purpose:   fileMockPurpose,
-		})
+		c.JSON(http.StatusOK, createUploadFileResponse())
 	case http.MethodGet:
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data": []*file{
-				{
-					Id:        fileMockID,
-					Object:    "file",
-					Bytes:     fileMockBytes,
-					CreatedAt: fileMockCreated,
-					Filename:  fileMockFilename,
-					Purpose:   fileMockPurpose,
-					Status:    fileMockStatus,
-				},
-			},
-		})
+		c.JSON(http.StatusOK, createFileListResponse())
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -111,21 +92,7 @@ func (h *openaiFile) handleFiles(c *gin.Context, method string) {
 func (h *openaiFile) handleSingleFile(c *gin.Context, method string, fileID string) {
 	switch method {
 	case http.MethodGet:
-		c.JSON(http.StatusOK, file{
-			Id:        fileID,
-			Object:    "file",
-			Bytes:     fileMockBytes,
-			CreatedAt: fileMockCreated,
-			Filename:  fileMockFilename,
-			Purpose:   fileMockPurpose,
-			Status:    fileMockStatus,
-		})
-	case http.MethodDelete:
-		c.JSON(http.StatusOK, gin.H{
-			"id":      fileID,
-			"object":  "file",
-			"deleted": true,
-		})
+		c.JSON(http.StatusOK, createFileResponse(fileID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -134,21 +101,72 @@ func (h *openaiFile) handleSingleFile(c *gin.Context, method string, fileID stri
 func (h *openaiFile) handleFileContent(c *gin.Context, method string, fileID string) {
 	switch method {
 	case http.MethodGet:
-		c.String(http.StatusOK, fileID)
+		c.String(http.StatusOK, createFileContentResponse(fileID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
 }
 
+// createUploadFileResponse 创建文件上传响应
+func createUploadFileResponse() uploadFileResponse {
+	return uploadFileResponse{
+		Id:        fileMockID,
+		Object:    "file",
+		Bytes:     fileMockBytes,
+		CreatedAt: fileMockCreated,
+		Filename:  fileMockFilename,
+		Purpose:   fileMockPurpose,
+	}
+}
+
+// createFileListResponse 创建文件列表响应
+func createFileListResponse() gin.H {
+	return gin.H{
+		"object": "list",
+		"data": []*file{
+			{
+				Id:            fileMockID,
+				Object:        "file",
+				Bytes:         fileMockBytes,
+				CreatedAt:     fileMockCreated,
+				Filename:      fileMockFilename,
+				Purpose:       fileMockPurpose,
+				Status:        fileMockStatus,
+				StatusDetails: fileMockStatusDetails,
+			},
+		},
+	}
+}
+
+// createFileResponse 创建单个文件响应
+func createFileResponse(fileID string) file {
+	return file{
+		Id:            fileID,
+		Object:        "file",
+		Bytes:         fileMockBytes,
+		CreatedAt:     fileMockCreated,
+		Filename:      fileMockFilename,
+		Purpose:       fileMockPurpose,
+		Status:        fileMockStatus,
+		StatusDetails: fileMockStatusDetails,
+	}
+}
+
+// createFileContentResponse 创建文件内容响应
+func createFileContentResponse(fileID string) string {
+	return fileID
+}
+
 type file struct {
-	Id        string `json:"id"`
-	Object    string `json:"object"`
-	Bytes     int    `json:"bytes"`
-	CreatedAt int64  `json:"created_at"`
-	ExpiresAt int64  `json:"expires_at"`
-	Filename  string `json:"filename"`
-	Purpose   string `json:"purpose"`
-	Status    string `json:"status"`
+	Id            string `json:"id"`
+	Object        string `json:"object"`
+	Bytes         int    `json:"bytes"`
+	CreatedAt     int64  `json:"created_at"`
+	ExpiresAt     int64  `json:"expires_at"`
+	Filename      string `json:"filename"`
+	Purpose       string `json:"purpose"`
+	Status        string `json:"status"`
+	StatusDetails string `json:"status_details"`
 }
 
 type uploadFileRequest struct {

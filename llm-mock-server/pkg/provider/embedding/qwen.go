@@ -15,23 +15,18 @@ const (
 	qwenDomain                      = "dashscope.aliyuncs.com"
 	qwenTextEmbeddingPath           = "/api/v1/services/embeddings/text-embedding/text-embedding"
 	qwenCompatibleTextEmbeddingPath = "/compatible-mode/v1/embeddings"
-
-	// Mock constants
-	embeddingMockId = "embedding-mock"
+	embeddingMockId                 = "embedding-mock"
 )
 
 var (
-	// 固定的 mock embedding 向量，用于测试
 	qwenMockEmbeddingVector = []float64{0.001, 0.002, 0.003}
 
-	// 固定的 usage 数据
 	qwenMockUsage = usage{
 		PromptTokens: 5,
 		TotalTokens:  5,
 	}
 )
 
-// qwen 错误响应结构
 type qwenErrorResp struct {
 	Code      string `json:"code"`
 	Message   string `json:"message"`
@@ -59,7 +54,6 @@ func (h *qwenEmbedding) ShouldHandleRequest(ctx *gin.Context) bool {
 }
 
 func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
-	// 验证 Authorization header
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		h.sendErrorResponse(c, http.StatusUnauthorized,
@@ -67,10 +61,8 @@ func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 		return
 	}
 
-	// 根据不同路径处理不同类型的请求
 	switch c.Request.URL.Path {
 	case qwenTextEmbeddingPath:
-		// 处理原生 Qwen embeddings 请求
 		var qwenRequest qwenTextEmbeddingRequest
 		if err := c.ShouldBindJSON(&qwenRequest); err != nil {
 			h.sendErrorResponse(c, http.StatusBadRequest,
@@ -78,7 +70,6 @@ func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 			return
 		}
 
-		// 验证请求体
 		if err := utils.Validate.Struct(qwenRequest); err != nil {
 			validationErrors := err.(validator.ValidationErrors)
 			for _, fieldError := range validationErrors {
@@ -88,12 +79,10 @@ func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 			}
 		}
 
-		// 生成 mock embeddings 响应
 		response := h.createQwenTextEmbeddingResponse(qwenRequest)
 		c.JSON(http.StatusOK, response)
 
 	case qwenCompatibleTextEmbeddingPath:
-		// 处理兼容模式请求 - 直接处理，不经过 qwen 格式转换
 		var compatRequest embeddingsRequest
 		if err := c.ShouldBindJSON(&compatRequest); err != nil {
 			h.sendErrorResponse(c, http.StatusBadRequest,
@@ -101,7 +90,6 @@ func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 			return
 		}
 
-		// 验证请求体
 		if err := utils.Validate.Struct(compatRequest); err != nil {
 			validationErrors := err.(validator.ValidationErrors)
 			for _, fieldError := range validationErrors {
@@ -111,7 +99,6 @@ func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 			}
 		}
 
-		// 直接处理输入文本
 		texts, err := h.extractTextsFromInput(compatRequest.Input)
 		if err != nil {
 			h.sendErrorResponse(c, http.StatusBadRequest,
@@ -119,13 +106,11 @@ func (h *qwenEmbedding) HandleEmbeddings(c *gin.Context) {
 			return
 		}
 
-		// 直接生成兼容格式的响应
 		response := h.createCompatibleEmbeddingsResponse(compatRequest, texts)
 		c.JSON(http.StatusOK, response)
 	}
 }
 
-// 发送错误响应
 func (h *qwenEmbedding) sendErrorResponse(ctx *gin.Context, statusCode int, errorCode, errorMsg string) {
 	errorResp := qwenErrorResp{
 		Code:      errorCode,
@@ -135,7 +120,6 @@ func (h *qwenEmbedding) sendErrorResponse(ctx *gin.Context, statusCode int, erro
 	ctx.JSON(statusCode, errorResp)
 }
 
-// 从输入中提取文本数组（类似 openai.go 的逻辑）
 func (h *qwenEmbedding) extractTextsFromInput(input interface{}) ([]string, error) {
 	switch v := input.(type) {
 	case string:
@@ -157,11 +141,9 @@ func (h *qwenEmbedding) extractTextsFromInput(input interface{}) ([]string, erro
 	}
 }
 
-// 创建兼容格式的 embeddings 响应（类似 openai.go 的逻辑）
 func (h *qwenEmbedding) createCompatibleEmbeddingsResponse(request embeddingsRequest, texts []string) embeddingsResponse {
 	data := make([]embedding, len(texts))
 
-	// 对每个文本都使用相同的固定 mock 向量
 	for i := range texts {
 		data[i] = embedding{
 			Object:    "embedding",
@@ -178,32 +160,9 @@ func (h *qwenEmbedding) createCompatibleEmbeddingsResponse(request embeddingsReq
 	}
 }
 
-// 构建通用 embeddings 响应
-func (h *qwenEmbedding) buildEmbeddingsResponse(request *embeddingsRequest, qwenResponse *qwenTextEmbeddingResponse) *embeddingsResponse {
-	data := make([]embedding, 0, len(qwenResponse.Output.Embeddings))
-	for _, qwenEmbedding := range qwenResponse.Output.Embeddings {
-		data = append(data, embedding{
-			Object:    "embedding",
-			Index:     qwenEmbedding.TextIndex,
-			Embedding: qwenEmbedding.Embedding,
-		})
-	}
-	return &embeddingsResponse{
-		Object: "list",
-		Data:   data,
-		Model:  request.Model,
-		Usage: usage{
-			PromptTokens: qwenResponse.Usage.TotalTokens,
-			TotalTokens:  qwenResponse.Usage.TotalTokens,
-		},
-	}
-}
-
-// 创建 qwen 文本嵌入响应 - 使用固定值简化逻辑
 func (h *qwenEmbedding) createQwenTextEmbeddingResponse(request qwenTextEmbeddingRequest) qwenTextEmbeddingResponse {
 	embeddings := make([]qwenTextEmbeddings, len(request.Input.Texts))
 
-	// 对每个文本都使用相同的固定 mock 向量
 	for i := range request.Input.Texts {
 		embeddings[i] = qwenTextEmbeddings{
 			TextIndex: i,
