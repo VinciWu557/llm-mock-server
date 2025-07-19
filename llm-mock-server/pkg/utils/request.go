@@ -43,6 +43,17 @@ func BuildRequestContext(context *gin.Context) error {
 	// Reset the request body so it can be read again by subsequent handlers
 	context.Request.Body = io.NopCloser(strings.NewReader(string(body)))
 
+	// 检查 Content-Type，如果是 multipart/form-data，跳过 JSON 解析
+	contentType := context.GetHeader("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		context.Set("requestContext", RequestContext{
+			Host:  context.Request.Host,
+			Path:  context.Request.URL.Path,
+			Model: "",
+		})
+		return nil
+	}
+
 	var data map[string]interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
 		log.Errorf("Error unmarshalling JSON:", err)

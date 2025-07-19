@@ -2,6 +2,7 @@ package file
 
 import (
 	"llm-mock-server/pkg/provider"
+	"mime/multipart"
 	"net/http"
 	"regexp"
 	"strings"
@@ -81,7 +82,7 @@ func (h *openaiFile) handleFiles(c *gin.Context, method string) {
 			return
 		}
 
-		c.JSON(http.StatusOK, createUploadFileResponse())
+		c.JSON(http.StatusOK, createUploadFileResponse(req))
 	case http.MethodGet:
 		c.JSON(http.StatusOK, createFileListResponse())
 	default:
@@ -108,14 +109,14 @@ func (h *openaiFile) handleFileContent(c *gin.Context, method string, fileID str
 }
 
 // createUploadFileResponse 创建文件上传响应
-func createUploadFileResponse() uploadFileResponse {
+func createUploadFileResponse(req uploadFileRequest) uploadFileResponse {
 	return uploadFileResponse{
 		Id:        fileMockID,
 		Object:    "file",
 		Bytes:     fileMockBytes,
 		CreatedAt: fileMockCreated,
-		Filename:  fileMockFilename,
-		Purpose:   fileMockPurpose,
+		Filename:  req.File.Filename,
+		Purpose:   req.Purpose,
 	}
 }
 
@@ -170,7 +171,8 @@ type file struct {
 }
 
 type uploadFileRequest struct {
-	Purpose string `form:"purpose"`
+	File    *multipart.FileHeader `form:"file" binding:"required"`
+	Purpose string                `form:"purpose" binding:"required"`
 }
 
 type uploadFileResponse struct {

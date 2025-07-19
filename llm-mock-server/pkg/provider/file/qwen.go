@@ -62,7 +62,7 @@ func (h *qwenFile) handleFiles(c *gin.Context, method string) {
 			return
 		}
 
-		c.JSON(http.StatusOK, createUploadFileResponse())
+		c.JSON(http.StatusOK, createUploadFileResponse(req))
 	case http.MethodGet:
 		c.JSON(http.StatusOK, createFileListResponse())
 	default:
