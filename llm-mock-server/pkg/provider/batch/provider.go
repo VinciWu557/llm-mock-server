@@ -50,8 +50,3 @@ func handleBatch(context *gin.Context) {
 	}
 	context.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 }
-
-// GetBatchRequestHandler 返回批处理请求处理器
-func GetBatchRequestHandler() BatchRequestHandler {
-	return &openAIBatch{}
-}

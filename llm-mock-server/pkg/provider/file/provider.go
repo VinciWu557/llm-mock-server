@@ -34,7 +34,7 @@ var (
 
 func SetupRoutes(server *gin.Engine) {
 	for _, route := range fileRoutes {
-		server.POST(route, handleFile)
+		server.Any(route, handleFile)
 	}
 }
 

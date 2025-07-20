@@ -33,6 +33,15 @@ func GetRequestContext(context *gin.Context) (RequestContext, error) {
 }
 
 func BuildRequestContext(context *gin.Context) error {
+	if context.Request.Method == http.MethodGet {
+		context.Set("requestContext", RequestContext{
+			Host:  context.Request.Host,
+			Path:  context.Request.URL.Path,
+			Model: "",
+		})
+		return nil
+	}
+
 	body, err := io.ReadAll(context.Request.Body)
 	if err != nil {
 		log.Errorf("Error reading request body:", err)

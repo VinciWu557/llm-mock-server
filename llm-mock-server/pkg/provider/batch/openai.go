@@ -17,7 +17,7 @@ const (
 	batchMockDescription string = "Nightly eval job"
 
 	openaiBatchesPath       = "/v1/batches"
-	openaiRetrieveBatchPath = "/v1/batches/{batch_id}"
+	openaiRetrieveBatchPath = "/v1/batches/:batch_id"
 )
 
 var (

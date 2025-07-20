@@ -20,8 +20,8 @@ const (
 	fileMockStatusDetails string = "test_status_details"
 
 	openaiFilesPath               = "/v1/files"
-	openaiRetrieveFilePath        = "/v1/files/{file_id}"
-	openaiRetrieveFileContentPath = "/v1/files/{file_id}/content"
+	openaiRetrieveFilePath        = "/v1/files/:file_id"
+	openaiRetrieveFileContentPath = "/v1/files/:file_id/content"
 )
 
 var (
@@ -84,7 +84,7 @@ func (h *openaiFile) handleFiles(c *gin.Context, method string) {
 
 		c.JSON(http.StatusOK, createUploadFileResponse(req))
 	case http.MethodGet:
-		c.JSON(http.StatusOK, createFileListResponse())
+		c.JSON(http.StatusOK, getFileListResponse())
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -93,7 +93,7 @@ func (h *openaiFile) handleFiles(c *gin.Context, method string) {
 func (h *openaiFile) handleSingleFile(c *gin.Context, method string, fileID string) {
 	switch method {
 	case http.MethodGet:
-		c.JSON(http.StatusOK, createFileResponse(fileID))
+		c.JSON(http.StatusOK, retrieveFileResponse(fileID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -102,7 +102,7 @@ func (h *openaiFile) handleSingleFile(c *gin.Context, method string, fileID stri
 func (h *openaiFile) handleFileContent(c *gin.Context, method string, fileID string) {
 	switch method {
 	case http.MethodGet:
-		c.String(http.StatusOK, createFileContentResponse(fileID))
+		c.JSON(http.StatusOK, retrieveFileContentResponse(fileID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -120,8 +120,8 @@ func createUploadFileResponse(req uploadFileRequest) uploadFileResponse {
 	}
 }
 
-// createFileListResponse 创建文件列表响应
-func createFileListResponse() gin.H {
+// getFileListResponse 获取文件列表响应
+func getFileListResponse() gin.H {
 	return gin.H{
 		"object": "list",
 		"data": []*file{
@@ -139,8 +139,8 @@ func createFileListResponse() gin.H {
 	}
 }
 
-// createFileResponse 创建单个文件响应
-func createFileResponse(fileID string) file {
+// createFileResponse 检索单个文件响应
+func retrieveFileResponse(fileID string) file {
 	return file{
 		Id:            fileID,
 		Object:        "file",
@@ -153,9 +153,56 @@ func createFileResponse(fileID string) file {
 	}
 }
 
-// createFileContentResponse 创建文件内容响应
-func createFileContentResponse(fileID string) string {
-	return fileID
+// retrieveFileContentResponse 检索文件内容响应
+func retrieveFileContentResponse(fileID string) fileContent {
+	requestID := fileID + "-7616-97bf-87f2-7d747bbe84fd"
+
+	return fileContent{
+		Id:       fileID,
+		CustomId: "1",
+		Response: responseData{
+			StatusCode: 200,
+			RequestId:  requestID,
+			Body: responseBody{
+				Id:      "chatcmpl-" + requestID,
+				Created: 1742303743,
+				Usage: struct {
+					CompletionTokens int `json:"completion_tokens"`
+					PromptTokens     int `json:"prompt_tokens"`
+					TotalTokens      int `json:"total_tokens"`
+				}{
+					CompletionTokens: 7,
+					PromptTokens:     26,
+					TotalTokens:      33,
+				},
+				Model: "qwen-max",
+				Choices: []struct {
+					FinishReason string `json:"finish_reason"`
+					Index        int    `json:"index"`
+					Message      struct {
+						Content string `json:"content"`
+					} `json:"message"`
+				}{
+					{
+						FinishReason: "stop",
+						Index:        0,
+						Message: struct {
+							Content string `json:"content"`
+						}{
+							Content: "2+2 equals 4.",
+						},
+					},
+				},
+				Object: "chat.completion",
+			},
+		},
+		Error:            nil,
+		CompletionTokens: 7,
+		PromptTokens:     26,
+		ReasoningTokens:  0,
+		Model:            "qwen-max",
+		ReasoningContent: "2+2 equals 4.",
+	}
 }
 
 type file struct {
@@ -182,4 +229,49 @@ type uploadFileResponse struct {
 	CreatedAt int64  `json:"created_at"`
 	Filename  string `json:"filename"`
 	Purpose   string `json:"purpose"`
+}
+
+// responseBody 响应体结构
+type responseBody struct {
+	Id      string `json:"id"`
+	Created int64  `json:"created"`
+	Usage   struct {
+		CompletionTokens int `json:"completion_tokens"`
+		PromptTokens     int `json:"prompt_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
+	Model   string `json:"model"`
+	Choices []struct {
+		FinishReason string `json:"finish_reason"`
+		Index        int    `json:"index"`
+		Message      struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+	Object string `json:"object"`
+}
+
+// responseData 响应数据结构
+type responseData struct {
+	StatusCode int          `json:"status_code"`
+	RequestId  string       `json:"request_id"`
+	Body       responseBody `json:"body"`
+}
+
+// errorData 错误数据结构
+type errorData struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type fileContent struct {
+	Id               string       `json:"id"`
+	CustomId         string       `json:"custom_id"`
+	Response         responseData `json:"response"`
+	Error            *errorData   `json:"error"`
+	CompletionTokens int          `json:"completion_tokens"`
+	PromptTokens     int          `json:"prompt_tokens"`
+	ReasoningTokens  int          `json:"reasoning_tokens"`
+	Model            string       `json:"model"`
+	ReasoningContent string       `json:"reasoning_content"`
 }

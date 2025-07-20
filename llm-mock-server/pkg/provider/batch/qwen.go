@@ -11,7 +11,7 @@ import (
 
 const (
 	qwenCompatibleBatchesPath       = "/compatible-mode/v1/batches"
-	qwenCompatibleRetrieveBatchPath = "/compatible-mode/v1/batches/{batch_id}"
+	qwenCompatibleRetrieveBatchPath = "/compatible-mode/v1/batches/:batch_id"
 )
 
 var (

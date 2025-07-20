@@ -11,8 +11,8 @@ import (
 
 const (
 	qwenCompatibleFilesPath               = "/compatible-mode/v1/files"
-	qwenCompatibleRetrieveFilePath        = "/compatible-mode/v1/files/{file_id}"
-	qwenCompatibleRetrieveFileContentPath = "/compatible-mode/v1/files/{file_id}/content"
+	qwenCompatibleRetrieveFilePath        = "/compatible-mode/v1/files/:file_id"
+	qwenCompatibleRetrieveFileContentPath = "/compatible-mode/v1/files/:file_id/content"
 )
 
 var (
@@ -64,7 +64,7 @@ func (h *qwenFile) handleFiles(c *gin.Context, method string) {
 
 		c.JSON(http.StatusOK, createUploadFileResponse(req))
 	case http.MethodGet:
-		c.JSON(http.StatusOK, createFileListResponse())
+		c.JSON(http.StatusOK, getFileListResponse())
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -73,7 +73,7 @@ func (h *qwenFile) handleFiles(c *gin.Context, method string) {
 func (h *qwenFile) handleSingleFile(c *gin.Context, method string, fileID string) {
 	switch method {
 	case http.MethodGet:
-		c.JSON(http.StatusOK, createFileResponse(fileID))
+		c.JSON(http.StatusOK, retrieveFileResponse(fileID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -82,7 +82,7 @@ func (h *qwenFile) handleSingleFile(c *gin.Context, method string, fileID string
 func (h *qwenFile) handleFileContent(c *gin.Context, method string, fileID string) {
 	switch method {
 	case http.MethodGet:
-		c.String(http.StatusOK, createFileContentResponse(fileID))
+		c.JSON(http.StatusOK, retrieveFileContentResponse(fileID))
 	default:
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
