@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	batchMockID          string = "batch-abc123"
-	batchMockCreated     int64  = 10
-	batchMockInputFileId string = "file-abc123"
-	batchMockCustomerID  string = "user_123456789"
-	batchMockDescription string = "Nightly eval job"
+	batchMockID            string = "batch-abc123"
+	batchMockCreated       int64  = 10
+	batchMockInputFileId   string = "file-abc123"
+	batchMockDsName        string = "ds_name"
+	batchMockDsDescription string = "ds_description"
 
 	openaiBatchesPath       = "/v1/batches"
 	openaiRetrieveBatchPath = "/v1/batches/:batch_id"
@@ -126,8 +126,8 @@ func createBatchResponse(batchID string) batch {
 			Total:     0,
 		},
 		Metadata: map[string]string{
-			"customer_id":       batchMockCustomerID,
-			"batch_description": batchMockDescription,
+			"ds_name":        batchMockDsName,
+			"ds_description": batchMockDsDescription,
 		},
 	}
 }
@@ -174,8 +174,8 @@ func createBatchListResponse() gin.H {
 					Total:     0,
 				},
 				Metadata: map[string]string{
-					"customer_id":       batchMockCustomerID,
-					"batch_description": batchMockDescription,
+					"ds_name":        batchMockDsName,
+					"ds_description": batchMockDsDescription,
 				},
 			},
 		},
