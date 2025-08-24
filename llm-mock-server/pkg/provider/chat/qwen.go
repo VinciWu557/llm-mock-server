@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"llm-mock-server/pkg/log"
 	"llm-mock-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -15,9 +16,8 @@ import (
 )
 
 const (
-	qwenDomain                      = "dashscope.aliyuncs.com"
-	qwenChatCompletionPath          = "/api/v1/services/aigc/text-generation/generation"
-	
+	qwenDomain             = "dashscope.aliyuncs.com"
+	qwenChatCompletionPath = "/api/v1/services/aigc/text-generation/generation"
 
 	qwenCompatibleChatCompletionPath = "/compatible-mode/v1/chat/completions"
 	qwenCompatibleCompletionsPath    = "/compatible-mode/v1/completions"
@@ -60,6 +60,11 @@ func (p *qwenProvider) HandleChatCompletions(ctx *gin.Context) {
 	// Determine if the request is a stream request
 	isStream := p.isStreamRequest(ctx)
 
+	log.Infof("ctx.Request.URL.Path: %s", ctx.Request.URL.Path)
+	log.Infof("ctx.Request.Header: %v", ctx.Request.Header)
+	log.Infof("ctx.Request.Body: %s", ctx.Request.Body)
+	log.Infof("isStream: %v", isStream)
+
 	// 根据不同路径处理不同类型的请求
 	switch ctx.Request.URL.Path {
 	case qwenChatCompletionPath:
@@ -81,11 +86,7 @@ func (p *qwenProvider) HandleChatCompletions(ctx *gin.Context) {
 			}
 		}
 
-		prompt := ""
-		messages := qwenRequest.Input.Messages
-		if len(messages) > 0 && messages[len(messages)-1].IsStringContent() {
-			prompt = messages[len(messages)-1].StringContent()
-		}
+		prompt := extractPromptFromQwenMessages(qwenRequest.Input.Messages)
 		response := prompt2Response(prompt)
 
 		if isStream {
@@ -112,6 +113,8 @@ func (p *qwenProvider) HandleChatCompletions(ctx *gin.Context) {
 			}
 		}
 
+		// 兼容模式下判断 stream 字段
+		isStream = compatRequest.Stream
 		prompt := ""
 		if len(compatRequest.Messages) > 0 {
 			prompt = extractPromptFromMessages(compatRequest.Messages)
@@ -132,9 +135,10 @@ func (p *qwenProvider) HandleChatCompletions(ctx *gin.Context) {
 			streamResponseChoice := chatCompletionChoice{Delta: &chatMessage{}}
 
 			go func() {
-				for i, s := range response {
+				responseRunes := []rune(response)
+				for i, s := range responseRunes {
 					streamResponseChoice.Delta.Content = string(s)
-					if i == len(response)-1 {
+					if i == len(responseRunes)-1 {
 						streamResponseChoice.FinishReason = ptr(stopReason)
 					}
 					streamResponse.Choices = []chatCompletionChoice{streamResponseChoice}
@@ -174,6 +178,14 @@ func extractPromptFromMessages(messages []chatMessage) string {
 	return lastMessage.StringContent()
 }
 
+func extractPromptFromQwenMessages(messages []qwenMessage) string {
+	if len(messages) == 0 {
+		return ""
+	}
+	lastMessage := messages[len(messages)-1]
+	return lastMessage.StringContent()
+}
+
 func (p *qwenProvider) sendErrorResponse(ctx *gin.Context, statusCode int, errorCode, errorMsg string) {
 	errorResp := qwenErrorResp{
 		Code:      errorCode,
@@ -202,10 +214,53 @@ func (p *qwenProvider) handleNonStreamResponse(ctx *gin.Context, chatRequest qwe
 
 func (p *qwenProvider) handleStreamResponse(ctx *gin.Context, chatRequest qwenTextGenRequest, response string) {
 	utils.SetEventStreamHeaders(ctx)
-	dataChan, stopChan := createQwenStreamResponse(chatRequest, response)
+
+	dataChan := make(chan string)
+	stopChan := make(chan bool, 1)
+
+	go func() {
+		responseRunes := []rune(response)
+		for i, s := range responseRunes {
+			qwenResponse := qwenTextGenResponse{
+				RequestId: completionMockId,
+				Output: qwenTextGenOutput{
+					Choices: []qwenTextGenChoice{
+						{
+							FinishReason: "",
+							Message: qwenMessage{
+								Role:    roleAssistant,
+								Content: string(s),
+							},
+						},
+					},
+				},
+				Usage: qwenUsage{
+					InputTokens:  9,
+					OutputTokens: 1,
+					TotalTokens:  10,
+				},
+			}
+
+			if i == len(responseRunes)-1 {
+				qwenResponse.Output.Choices[0].FinishReason = stopReason
+				qwenResponse.Output.FinishReason = stopReason
+			} else {
+				qwenResponse.Output.Choices[0].FinishReason = "null"
+			}
+
+			jsonStr, _ := json.Marshal(qwenResponse)
+			dataChan <- string(jsonStr)
+
+			// Simulate response delay
+			time.Sleep(200 * time.Millisecond)
+		}
+		stopChan <- true
+	}()
+
 	ctx.Stream(func(w io.Writer) bool {
 		select {
 		case data := <-dataChan:
+			log.Infof("qwen stream response: %s", data)
 			ctx.Render(-1, streamEvent{Data: "data: " + data})
 			return true
 		case <-stopChan:
@@ -279,36 +334,6 @@ func createQwenTextGenResponse(chatRequest qwenTextGenRequest, response string) 
 		},
 		RequestId: completionMockId,
 	}
-}
-
-func createQwenStreamResponse(chatRequest qwenTextGenRequest, response string) (chan string, chan bool) {
-	dataChan := make(chan string)
-	stopChan := make(chan bool, 1)
-	streamResponse := chatCompletionResponse{
-		Id:      completionMockId,
-		Object:  objectChatCompletionChunk,
-		Created: completionMockCreated,
-		Model:   chatRequest.Model,
-	}
-	streamResponseChoice := chatCompletionChoice{Delta: &chatMessage{}}
-
-	go func() {
-		for i, s := range response {
-			streamResponseChoice.Delta.Content = string(s)
-			if i == len(response)-1 {
-				streamResponseChoice.FinishReason = ptr(stopReason)
-			}
-			streamResponse.Choices = []chatCompletionChoice{streamResponseChoice}
-			jsonStr, _ := json.Marshal(streamResponse)
-			dataChan <- string(jsonStr)
-
-			// 模拟响应延迟
-			time.Sleep(200 * time.Millisecond)
-		}
-		stopChan <- true
-	}()
-
-	return dataChan, stopChan
 }
 
 type qwenTextGenOutput struct {

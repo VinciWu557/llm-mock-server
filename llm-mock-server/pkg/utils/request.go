@@ -69,6 +69,12 @@ func BuildRequestContext(context *gin.Context) error {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Error unmarshalling JSON"})
 		return err
 	}
+
+	// 打印 data
+	log.Info("==============================")
+	log.Infof("[BuildRequestContext]: %v", data)
+	log.Info("==============================")
+
 	model, _ := data["model"].(string)
 
 	context.Set("requestContext", RequestContext{
